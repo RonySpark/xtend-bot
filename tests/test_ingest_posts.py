@@ -15,6 +15,8 @@ LIKES = FIXTURES / "likes_page.json"
 REPOSTS = FIXTURES / "reposts_page.json"
 QUOTES = FIXTURES / "quotes_page.json"
 REPLIES = FIXTURES / "replies_page.json"
+REPLIES_TWO = FIXTURES / "replies_two.json"
+QUOTES_TWO = FIXTURES / "quotes_two.json"
 LIKES_NO_VERIFIED = FIXTURES / "likes_no_verified.json"
 LIKES_VERIFIED_FALSE = FIXTURES / "likes_verified_false.json"
 DATE = "2026-01-03"
@@ -244,3 +246,55 @@ def test_missing_verified_keeps_existing_flag(tmp_path):
     conn = sqlite3.connect(db)
     assert verified_of(conn, "1002") == 0
     conn.close()
+
+
+def source_ids(conn, x_user_id, kind):
+    rows = conn.execute(
+        """
+        SELECT engagements.source_post_id
+        FROM engagements
+        JOIN posts ON posts.id = engagements.post_id
+        JOIN accounts ON accounts.id = engagements.account_id
+        WHERE posts.x_post_id = '2001'
+          AND accounts.x_user_id = ?
+          AND engagements.kind = ?
+        ORDER BY engagements.source_post_id
+        """,
+        (x_user_id, kind),
+    ).fetchall()
+    return [row[0] for row in rows]
+
+
+def test_two_replies_from_one_person_stay_two_rows(tmp_path):
+    original = REPLIES_TWO.read_bytes()
+    db = tmp_path / "xtend.db"
+    run_posts(db, POSTS, "posts", owner="1000")
+    first = run_posts(db, REPLIES_TWO, "reply", post="2001")
+    assert first["upserted"] == 2
+
+    conn = sqlite3.connect(db)
+    assert source_ids(conn, "1004", "reply") == ["3002", "3004"]
+    conn.close()
+
+    second = run_posts(db, REPLIES_TWO, "reply", post="2001")
+    conn = sqlite3.connect(db)
+    assert source_ids(conn, "1004", "reply") == ["3002", "3004"]
+    assert second["engagements"] == 2
+    conn.close()
+    assert REPLIES_TWO.read_bytes() == original
+
+    run_posts(db, QUOTES_TWO, "quote", post="2001")
+    run_posts(db, QUOTES_TWO, "quote", post="2001")
+    conn = sqlite3.connect(db)
+    assert source_ids(conn, "1003", "quote") == ["3011", "3012"]
+    conn.close()
+
+    run_posts(db, LIKES, "like", post="2001")
+    run_posts(db, LIKES, "like", post="2001")
+    conn = sqlite3.connect(db)
+    assert source_ids(conn, "1001", "like") == [None]
+    conn.close()
+
+    lint = run_lint(db)
+    assert lint.returncode == 0, lint.stdout
+    assert lint.stdout == ""

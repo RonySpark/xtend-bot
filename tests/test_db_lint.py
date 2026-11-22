@@ -102,6 +102,52 @@ def test_duplicate_snapshot_rows_fail(tmp_path):
     ]
 
 
+def test_duplicate_reply_source_fails(tmp_path):
+    db = tmp_path / "broken.db"
+    conn = sqlite3.connect(db)
+    apply_schema(conn)
+    insert_account(conn)
+    conn.execute("DROP TABLE engagements")
+    conn.execute(
+        """
+        CREATE TABLE engagements (
+            id INTEGER PRIMARY KEY,
+            post_id INTEGER NOT NULL REFERENCES posts (id),
+            account_id INTEGER NOT NULL REFERENCES accounts (id),
+            kind TEXT NOT NULL,
+            source_post_id TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO posts (x_post_id, account_id, text, created_at, is_repost)
+        VALUES ('2001', 1, 'Synthetic post one.', '2026-01-03T15:04:05.000Z', 0)
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO engagements (post_id, account_id, kind, source_post_id)
+        VALUES (1, 1, 'reply', '3002')
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO engagements (post_id, account_id, kind, source_post_id)
+        VALUES (1, 1, 'reply', '3002')
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    completed = run_lint(db)
+    assert completed.returncode == 1
+    assert completed.stderr == ""
+    assert completed.stdout.splitlines() == [
+        "duplicate rows in engagements: post_id=1, account_id=1, kind='reply', source_post_id='3002'"
+    ]
+
+
 @pytest.mark.parametrize(
     "value",
     ["yesterday", "2026-01-01T00:00:00", "2026-01-01T00:00:00+05:00"],
@@ -161,6 +207,7 @@ def test_null_required_timestamp_fails(tmp_path):
             post_id INTEGER NOT NULL REFERENCES posts (id),
             account_id INTEGER NOT NULL REFERENCES accounts (id),
             kind TEXT NOT NULL CHECK (kind IN ('like', 'repost', 'quote', 'reply')),
+            source_post_id TEXT,
             UNIQUE (post_id, account_id, kind)
         );
         INSERT INTO accounts (
@@ -218,6 +265,7 @@ def test_missing_column_fails(tmp_path):
             post_id INTEGER NOT NULL REFERENCES posts (id),
             account_id INTEGER NOT NULL REFERENCES accounts (id),
             kind TEXT NOT NULL CHECK (kind IN ('like', 'repost', 'quote', 'reply')),
+            source_post_id TEXT,
             UNIQUE (post_id, account_id, kind)
         );
         """

@@ -72,11 +72,11 @@ def parse_schema(sql):
                         if name.strip()
                     ]
                     if cols:
-                        uniques.append(cols)
+                        uniques.append({"columns": cols, "where": None})
                 continue
             name = tokens[0].strip('"')
             if re.search(r"\bUNIQUE\b", text, flags=re.IGNORECASE):
-                uniques.append([name])
+                uniques.append({"columns": [name], "where": None})
             ref = re.search(
                 r"\bREFERENCES\s+(\w+)\s*\(\s*(\w+)\s*\)",
                 text,
@@ -93,6 +93,25 @@ def parse_schema(sql):
         tables.append(
             {"name": match.group(1), "columns": columns, "uniques": uniques}
         )
+    by_name = {table["name"]: table for table in tables}
+    index_re = re.compile(
+        r"CREATE\s+UNIQUE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?"
+        r"\w+\s+ON\s+(\w+)\s*\(([^)]*)\)\s*(?:WHERE\s+([^;]+))?",
+        flags=re.IGNORECASE,
+    )
+    for match in index_re.finditer(sql):
+        table = by_name.get(match.group(1))
+        if table is None:
+            continue
+        columns = [
+            name.strip().strip('"')
+            for name in match.group(2).split(",")
+            if name.strip()
+        ]
+        if not columns:
+            continue
+        where = match.group(3).strip() if match.group(3) else None
+        table["uniques"].append({"columns": columns, "where": where})
     return tables
 
 
@@ -207,12 +226,23 @@ def check_uniques(conn, tables):
             continue
         present = column_names(conn, table["name"])
         for group in table["uniques"]:
-            if any(column not in present for column in group):
+            columns = group["columns"]
+            where_sql = group["where"]
+            if any(column not in present for column in columns):
                 continue
-            quoted = ", ".join(quote_ident(column) for column in group)
-            where = " AND ".join(
-                f"{quote_ident(column)} IS NOT NULL" for column in group
-            )
+            if where_sql and any(
+                name not in present
+                and name.lower() not in {"is", "null", "not", "and", "or"}
+                for name in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", where_sql)
+            ):
+                continue
+            quoted = ", ".join(quote_ident(column) for column in columns)
+            if where_sql:
+                where = where_sql
+            else:
+                where = " AND ".join(
+                    f"{quote_ident(column)} IS NOT NULL" for column in columns
+                )
             rows = conn.execute(
                 f"""
                 SELECT {quoted}, COUNT(*) AS n
@@ -224,7 +254,7 @@ def check_uniques(conn, tables):
                 """
             )
             for row in rows:
-                pairs = ", ".join(f"{column}={row[column]!r}" for column in group)
+                pairs = ", ".join(f"{column}={row[column]!r}" for column in columns)
                 problems.append(f"duplicate rows in {table['name']}: {pairs}")
     return problems
 

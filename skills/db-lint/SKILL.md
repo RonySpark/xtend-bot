@@ -15,5 +15,5 @@ It checks that:
 - Every table and column in `schema.sql` is present.
 - `PRAGMA integrity_check` is ok and `PRAGMA foreign_key_check` is empty.
 - No snapshot row points at a missing account.
-- No rows repeat a unique key declared in `schema.sql`. Snapshots are unique on the date and the account, which is the duplicate the ingest tool refuses to insert.
+- No rows repeat a unique key declared in `schema.sql`, including a unique index. Snapshots are unique on the date and the account. A quote or reply is unique on the post, the account, the kind, and `source_post_id`. A like or repost has no source post id and is unique on the post, the account, and the kind.
 - Timestamp values are ISO 8601 UTC. A calendar date `YYYY-MM-DD` is accepted. A value that includes a time must use `Z` or `+00:00`. The columns checked are `date`, names ending in `_at`, and names ending in `_seen`. Null is allowed only where `schema.sql` does not say `NOT NULL`.
