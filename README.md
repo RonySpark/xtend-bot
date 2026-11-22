@@ -45,7 +45,7 @@ Save a likes, reposts, quotes, or replies page for one post, then run:
 python tools/ingest_posts.py --db xtend.db --file tests/fixtures/likes_page.json --kind like --post 2001 --date 2026-01-03
 ```
 
-`--kind` is `like`, `repost`, `quote`, or `reply`. The command prints one JSON summary. It does not change the JSON file. Running it again on the same file keeps the same row counts. A page does not remove rows that are absent from that file.
+`--kind` is `like`, `repost`, `quote`, or `reply`. The command prints one JSON summary. It does not change the JSON file. Running it again on the same file keeps the same row counts. A page does not remove rows that are absent from that file. Each reply and each quote keeps its own post id, so two from the same account on one post are two rows. Likes and reposts stay one row per account per post.
 
 A plain repost in the owner's posts page is stored with `is_repost` set to 1. It is not an original post for scoring. An engagement page whose post is not already in the store is refused, and no engagement row is written.
 

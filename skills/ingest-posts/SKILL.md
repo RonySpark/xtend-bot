@@ -9,7 +9,7 @@ Input:
 
 `FILE` is not modified. `--kind posts` reads one user-posts page: a `data` array of posts (`id`, `text`, `author_id`, `created_at`, `referenced_tweets`) and `includes.users` for `--owner`. `--kind like` and `--kind repost` read a user page (`id`, `username`). `--kind quote` and `--kind reply` read a post page whose authors are in `includes.users` and whose `referenced_tweets` point at `--post` with type `quoted` or `replied_to`. The date defaults to today, UTC, and is stored on accounts as `first_seen` and `last_seen`.
 
-A plain repost is a post with `referenced_tweets` type `retweeted`. It is stored on the owner's account with `is_repost` 1. It is not an original post for scoring. Quotes and replies by the owner are stored with `is_repost` 0. The referenced post itself is not stored. A quote or reply page stores an engagement for its author and does not store that quote or reply as a post.
+A plain repost is a post with `referenced_tweets` type `retweeted`. It is stored on the owner's account with `is_repost` 1. It is not an original post for scoring. Quotes and replies by the owner are stored with `is_repost` 0. The referenced post itself is not stored. Each quote and each reply is its own engagement row. `source_post_id` is that quote or reply's post id, so two replies from one account on one post are two rows. Likes and reposts leave `source_post_id` empty and stay one row per account per post.
 
 An engagement whose post is not already in the store is refused. The command exits 1, prints `post not in store: X_POST_ID`, and writes no engagement row.
 

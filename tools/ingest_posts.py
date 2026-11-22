@@ -181,29 +181,34 @@ def read_engagements(path, kind, x_post_id):
     payload = read_payload(path)
     data = read_data(payload)
     if kind in ("like", "repost"):
-        users = [
-            parse_user(item, f"data[{index}]") for index, item in enumerate(data)
-        ]
-    else:
-        known = users_by_id(payload)
-        ref_type = REFERENCE_TYPES[kind]
-        users = []
-        for index, item in enumerate(data):
-            where = f"data[{index}]"
-            if not isinstance(item, dict):
-                raise ValueError(f"{where} is not an object")
-            if not references_post(item, x_post_id, ref_type):
-                raise ValueError(f"{where} does not reference post {x_post_id}")
-            author_id = item.get("author_id")
-            if author_id is None:
-                raise ValueError(f"{where} needs author_id")
-            user = known.get(str(author_id))
-            if user is None:
-                raise ValueError(
-                    f"{where} author {author_id} is not in includes.users"
-                )
-            users.append(user)
-    return dedupe_users(users)
+        users = dedupe_users(
+            [parse_user(item, f"data[{index}]") for index, item in enumerate(data)]
+        )
+        return [{"user": user, "source_post_id": None} for user in users]
+    known = users_by_id(payload)
+    ref_type = REFERENCE_TYPES[kind]
+    seen = {}
+    for index, item in enumerate(data):
+        where = f"data[{index}]"
+        if not isinstance(item, dict):
+            raise ValueError(f"{where} is not an object")
+        if not references_post(item, x_post_id, ref_type):
+            raise ValueError(f"{where} does not reference post {x_post_id}")
+        source_id = item.get("id")
+        author_id = item.get("author_id")
+        if source_id is None:
+            raise ValueError(f"{where} needs id")
+        if author_id is None:
+            raise ValueError(f"{where} needs author_id")
+        user = known.get(str(author_id))
+        if user is None:
+            raise ValueError(f"{where} author {author_id} is not in includes.users")
+        source_post_id = str(source_id)
+        seen[(user["x_user_id"], source_post_id)] = {
+            "user": user,
+            "source_post_id": source_post_id,
+        }
+    return list(seen.values())
 
 
 def dedupe_users(users):
@@ -213,12 +218,47 @@ def dedupe_users(users):
     return list(by_id.values())
 
 
+def migrate_engagements(conn):
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'engagements'"
+    ).fetchone()
+    if row is None:
+        return
+    columns = {info["name"] for info in conn.execute("PRAGMA table_info(engagements)")}
+    if "source_post_id" in columns:
+        return
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    conn.execute("ALTER TABLE engagements RENAME TO engagements_old")
+    conn.execute(
+        """
+        CREATE TABLE engagements (
+            id INTEGER PRIMARY KEY,
+            post_id INTEGER NOT NULL REFERENCES posts (id),
+            account_id INTEGER NOT NULL REFERENCES accounts (id),
+            kind TEXT NOT NULL CHECK (kind IN ('like', 'repost', 'quote', 'reply')),
+            source_post_id TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO engagements (id, post_id, account_id, kind, source_post_id)
+        SELECT id, post_id, account_id, kind, NULL FROM engagements_old
+        """
+    )
+    conn.execute("DROP TABLE engagements_old")
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = ON")
+
+
 def connect(db_path):
     if not SCHEMA_PATH.is_file():
         raise ValueError(f"schema not found: {SCHEMA_PATH}")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    migrate_engagements(conn)
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     return conn
 
@@ -304,7 +344,31 @@ def ingest_posts(conn, owner, posts, snapshot_date):
     }
 
 
-def ingest_engagements(conn, kind, x_post_id, users, snapshot_date):
+def insert_engagement(conn, post_id, account_id, kind, source_post_id):
+    if source_post_id is None:
+        conn.execute(
+            """
+            INSERT INTO engagements (post_id, account_id, kind, source_post_id)
+            VALUES (?, ?, ?, NULL)
+            ON CONFLICT (post_id, account_id, kind) WHERE source_post_id IS NULL
+            DO NOTHING
+            """,
+            (post_id, account_id, kind),
+        )
+        return
+    conn.execute(
+        """
+        INSERT INTO engagements (post_id, account_id, kind, source_post_id)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (post_id, account_id, kind, source_post_id)
+        WHERE source_post_id IS NOT NULL
+        DO NOTHING
+        """,
+        (post_id, account_id, kind, source_post_id),
+    )
+
+
+def ingest_engagements(conn, kind, x_post_id, rows, snapshot_date):
     with conn:
         post = conn.execute(
             "SELECT id FROM posts WHERE x_post_id = ?",
@@ -312,19 +376,15 @@ def ingest_engagements(conn, kind, x_post_id, users, snapshot_date):
         ).fetchone()
         if post is None:
             raise ValueError(f"post not in store: {x_post_id}")
-        for user in users:
+        for row in rows:
+            user = row["user"]
             upsert_account(conn, user, snapshot_date)
             account = conn.execute(
                 "SELECT id FROM accounts WHERE x_user_id = ?",
                 (user["x_user_id"],),
             ).fetchone()
-            conn.execute(
-                """
-                INSERT INTO engagements (post_id, account_id, kind)
-                VALUES (?, ?, ?)
-                ON CONFLICT (post_id, account_id, kind) DO NOTHING
-                """,
-                (post["id"], account["id"], kind),
+            insert_engagement(
+                conn, post["id"], account["id"], kind, row["source_post_id"]
             )
         engagement_count = count_rows(conn, "engagements")
         account_count = count_rows(conn, "accounts")
@@ -332,7 +392,7 @@ def ingest_engagements(conn, kind, x_post_id, users, snapshot_date):
         "snapshot_date": snapshot_date,
         "kind": kind,
         "x_post_id": x_post_id,
-        "upserted": len(users),
+        "upserted": len(rows),
         "engagements": engagement_count,
         "accounts": account_count,
     }

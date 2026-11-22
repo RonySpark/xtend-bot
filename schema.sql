@@ -37,5 +37,13 @@ CREATE TABLE IF NOT EXISTS engagements (
     post_id INTEGER NOT NULL REFERENCES posts (id),
     account_id INTEGER NOT NULL REFERENCES accounts (id),
     kind TEXT NOT NULL CHECK (kind IN ('like', 'repost', 'quote', 'reply')),
-    UNIQUE (post_id, account_id, kind)
+    source_post_id TEXT
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS engagements_without_source
+ON engagements (post_id, account_id, kind)
+WHERE source_post_id IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS engagements_with_source
+ON engagements (post_id, account_id, kind, source_post_id)
+WHERE source_post_id IS NOT NULL;
