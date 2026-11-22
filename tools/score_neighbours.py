@@ -8,14 +8,17 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-LIKE_WEIGHT = 1
-REPLY_WEIGHT = 3
+# X home-mixer weights.
+# https://github.com/xai-org/x-algorithm/blob/269340ce2eb8ca785bafa4f2c17a2e8b752bccd3/home-mixer/params/param.rs
+# FavoriteWeight -> like, RetweetWeight -> repost, QuoteWeight -> quote, ReplyWeight -> reply.
+X_WEIGHTS = {
+    "like": 0.708,
+    "repost": 1.0,
+    "quote": 5.0,
+    "reply": 5.0,
+}
 REPLY_CAP = 3
-
-
-def whole_number(value):
-    number = float(value)
-    return int(number) if number == int(number) else number
+SCORE_DECIMALS = 3
 
 
 def parse_utc(value, label):
@@ -140,7 +143,7 @@ def score(conn, since, until, weights):
             {
                 "x_user_id": person["x_user_id"],
                 "handle": person["handle"],
-                "score": whole_number(score_value),
+                "score": score_value,
                 "likes": person["likes"],
                 "reposts": person["reposts"],
                 "quotes": quotes,
@@ -151,8 +154,18 @@ def score(conn, since, until, weights):
     ranked.sort(key=lambda row: (-row["score"], -row["_tie_text"], row["x_user_id"]))
     ordered = []
     for index, row in enumerate(ranked, 1):
-        del row["_tie_text"]
-        ordered.append({"rank": index, **row})
+        ordered.append(
+            {
+                "rank": index,
+                "x_user_id": row["x_user_id"],
+                "handle": row["handle"],
+                "score": round(row["score"], SCORE_DECIMALS),
+                "likes": row["likes"],
+                "reposts": row["reposts"],
+                "quotes": row["quotes"],
+                "replies": row["replies"],
+            }
+        )
     return ordered
 
 
@@ -170,27 +183,21 @@ def main(argv=None):
     parser.add_argument("--db", required=True, help="SQLite database file to read")
     parser.add_argument("--since", required=True, help="Window start, ISO 8601 UTC, inclusive")
     parser.add_argument("--until", required=True, help="Window end, ISO 8601 UTC, exclusive")
-    parser.add_argument("--like-weight", type=float, default=LIKE_WEIGHT)
-    parser.add_argument("--reply-weight", type=float, default=REPLY_WEIGHT)
-    parser.add_argument("--repost-weight", type=float)
-    parser.add_argument("--quote-weight", type=float)
+    parser.add_argument("--like-weight", type=float, default=X_WEIGHTS["like"])
+    parser.add_argument("--reply-weight", type=float, default=X_WEIGHTS["reply"])
+    parser.add_argument("--repost-weight", type=float, default=X_WEIGHTS["repost"])
+    parser.add_argument("--quote-weight", type=float, default=X_WEIGHTS["quote"])
     args = parser.parse_args(argv)
     try:
         since = parse_utc(args.since, "--since")
         until = parse_utc(args.until, "--until")
         if since >= until:
             raise ValueError("--since must be earlier than --until")
-        like_weight = whole_number(args.like_weight)
-        reply_weight = whole_number(args.reply_weight)
         weights = {
-            "like": like_weight,
-            "repost": whole_number(
-                like_weight if args.repost_weight is None else args.repost_weight
-            ),
-            "quote": whole_number(
-                reply_weight if args.quote_weight is None else args.quote_weight
-            ),
-            "reply": reply_weight,
+            "like": args.like_weight,
+            "repost": args.repost_weight,
+            "quote": args.quote_weight,
+            "reply": args.reply_weight,
         }
         conn = open_readonly(args.db)
         try:

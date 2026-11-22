@@ -10,32 +10,35 @@ SCHEMA = ROOT / "schema.sql"
 SINCE = "2026-01-01T00:00:00Z"
 UNTIL = "2026-01-06T00:00:00Z"
 
-# Weights from x-neighbours defaults: like 1, repost 1 (the like weight),
-# quote 3 (the reply weight), reply 3. At most 3 distinct replies from one
-# account count on one original post. The window is [since, until). A plain
-# repost adds nothing, and the post's author does not score on their own post.
+# X home-mixer weights from param.rs @ 269340ce2e:
+# like FavoriteWeight 0.708, repost RetweetWeight 1.0,
+# quote QuoteWeight 5.0, reply ReplyWeight 5.0.
+# At most 3 distinct replies from one account count on one original post.
+# The window is [since, until). A plain repost adds nothing, and the post's
+# author does not score on their own post. Displayed scores are rounded to
+# 3 decimals. Rank uses the exact sum.
 #
-# sample_user_1: like on 2001 (1) + min(4, 3) replies on 2001 (9) + quote on 2001 (3) = 13.
+# sample_user_1: 1*0.708 + min(4, 3)*5.0 + 1*5.0 = 0.708 + 15 + 5 = 20.708.
 #   A like on plain repost 2002 adds 0. A like on 2009, after the window, adds 0.
-# sample_user_4: 2 replies on 2001 (6) + 2 replies on 2003 (6) = 12.
-# sample_user_3: 2 quotes on 2001 (6) = 6. A like on plain repost 2002 adds 0.
-# sample_user_2: repost of 2001 (1) + 1 reply on 2003 (3) = 4.
+# sample_user_4: 2*5.0 + 2*5.0 = 20.0.
+# sample_user_3: 2*5.0 = 10.0. A like on plain repost 2002 adds 0.
+# sample_user_2: 1*1.0 + 1*5.0 = 6.0.
 #   A like on 2010, whose created_at equals until, adds 0.
-# sample_user_5: 1 reply on 2001 (3) = 3.
-# sample_user_6: 1 quote on 2003 (3) = 3.
+# sample_user_5: 1*5.0 = 5.0.
+# sample_user_6: 1*5.0 = 5.0.
 # Equal scores rank the larger reply-plus-quote count first, then the smaller
 # x_user_id. Both have 1, so sample_user_5 ranks above sample_user_6.
 EXPECTED = {
     "since": SINCE,
     "until": UNTIL,
-    "weights": {"like": 1, "repost": 1, "quote": 3, "reply": 3},
+    "weights": {"like": 0.708, "repost": 1.0, "quote": 5.0, "reply": 5.0},
     "reply_cap": 3,
     "ranked": [
         {
             "rank": 1,
             "x_user_id": "1001",
             "handle": "sample_user_1",
-            "score": 13,
+            "score": 20.708,
             "likes": 1,
             "reposts": 0,
             "quotes": 1,
@@ -45,7 +48,7 @@ EXPECTED = {
             "rank": 2,
             "x_user_id": "1004",
             "handle": "sample_user_4",
-            "score": 12,
+            "score": 20.0,
             "likes": 0,
             "reposts": 0,
             "quotes": 0,
@@ -55,7 +58,7 @@ EXPECTED = {
             "rank": 3,
             "x_user_id": "1003",
             "handle": "sample_user_3",
-            "score": 6,
+            "score": 10.0,
             "likes": 0,
             "reposts": 0,
             "quotes": 2,
@@ -65,7 +68,7 @@ EXPECTED = {
             "rank": 4,
             "x_user_id": "1002",
             "handle": "sample_user_2",
-            "score": 4,
+            "score": 6.0,
             "likes": 0,
             "reposts": 1,
             "quotes": 0,
@@ -75,7 +78,7 @@ EXPECTED = {
             "rank": 5,
             "x_user_id": "1005",
             "handle": "sample_user_5",
-            "score": 3,
+            "score": 5.0,
             "likes": 0,
             "reposts": 0,
             "quotes": 0,
@@ -85,7 +88,7 @@ EXPECTED = {
             "rank": 6,
             "x_user_id": "1006",
             "handle": "sample_user_6",
-            "score": 3,
+            "score": 5.0,
             "likes": 0,
             "reposts": 0,
             "quotes": 1,
