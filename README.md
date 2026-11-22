@@ -2,7 +2,7 @@
 
 XTend keeps a creator's X followers real and grows genuine conversations.
 
-This repo is a tool chest. Each tool does one job from the command line and reads and writes one shared SQLite file.
+This repo is a tool chest. Each tool does one job from the command line and uses one shared SQLite file.
 
 ## Store
 
@@ -30,3 +30,13 @@ Use `--list following` for a following response. The command prints one JSON sum
 An account that was in an earlier full list and is missing from a later one is stored with that relationship turned off.
 
 `skills/ingest-followers/SKILL.md` says when a bot should run the tool and what the JSON means.
+
+## Check the database
+
+```bash
+python tools/db_lint.py --db xtend.db
+```
+
+The command reads the SQLite file and `schema.sql`. It prints one line per problem and does not change the file. Exit code 0 means the checks are clean.
+
+`skills/db-lint/SKILL.md` says when a bot should run the tool.
