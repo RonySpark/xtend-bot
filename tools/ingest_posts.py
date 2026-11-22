@@ -218,47 +218,12 @@ def dedupe_users(users):
     return list(by_id.values())
 
 
-def migrate_engagements(conn):
-    row = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'engagements'"
-    ).fetchone()
-    if row is None:
-        return
-    columns = {info["name"] for info in conn.execute("PRAGMA table_info(engagements)")}
-    if "source_post_id" in columns:
-        return
-    conn.commit()
-    conn.execute("PRAGMA foreign_keys = OFF")
-    conn.execute("ALTER TABLE engagements RENAME TO engagements_old")
-    conn.execute(
-        """
-        CREATE TABLE engagements (
-            id INTEGER PRIMARY KEY,
-            post_id INTEGER NOT NULL REFERENCES posts (id),
-            account_id INTEGER NOT NULL REFERENCES accounts (id),
-            kind TEXT NOT NULL CHECK (kind IN ('like', 'repost', 'quote', 'reply')),
-            source_post_id TEXT
-        )
-        """
-    )
-    conn.execute(
-        """
-        INSERT INTO engagements (id, post_id, account_id, kind, source_post_id)
-        SELECT id, post_id, account_id, kind, NULL FROM engagements_old
-        """
-    )
-    conn.execute("DROP TABLE engagements_old")
-    conn.commit()
-    conn.execute("PRAGMA foreign_keys = ON")
-
-
 def connect(db_path):
     if not SCHEMA_PATH.is_file():
         raise ValueError(f"schema not found: {SCHEMA_PATH}")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    migrate_engagements(conn)
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     return conn
 

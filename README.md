@@ -8,6 +8,8 @@ This repo is a tool chest. Each tool does one job from the command line and uses
 
 `schema.sql` holds the tables. This version has `accounts`, `snapshots`, `posts`, and `engagements`. The ingest tools create the database file and apply that schema.
 
+There is no migration before the first real data, so delete the dev database.
+
 ## Run the tests
 
 ```bash

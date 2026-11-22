@@ -8,8 +8,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ingest_posts import migrate_engagements
-
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
 LIST_FLAGS = {
     "followers": "follows_me",
@@ -87,7 +85,6 @@ def connect(db_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    migrate_engagements(conn)
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     return conn
 
