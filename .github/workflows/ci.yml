@@ -21,6 +21,28 @@ jobs:
       - name: Run tests
         run: python -m pytest
 
+  db-lint:
+    name: db-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Lint a database built from the fixtures
+        run: |
+          python tools/ingest_followers.py \
+            --db "$RUNNER_TEMP/xtend.db" \
+            --file tests/fixtures/followers_day1.json \
+            --list followers \
+            --date 2026-01-01
+          python tools/ingest_followers.py \
+            --db "$RUNNER_TEMP/xtend.db" \
+            --file tests/fixtures/followers_day2.json \
+            --list followers \
+            --date 2026-01-02
+          python tools/db_lint.py --db "$RUNNER_TEMP/xtend.db"
+
   gitleaks:
     name: gitleaks
     runs-on: ubuntu-latest
