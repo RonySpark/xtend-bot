@@ -1,0 +1,79 @@
+{
+  "data": [
+    {
+      "id": "2001",
+      "text": "Synthetic post one.",
+      "author_id": "1000",
+      "created_at": "2026-01-03T15:04:05.000Z",
+      "public_metrics": {
+        "retweet_count": 1,
+        "reply_count": 1,
+        "like_count": 1,
+        "quote_count": 1,
+        "bookmark_count": 0,
+        "impression_count": 10
+      }
+    },
+    {
+      "id": "2002",
+      "text": "Synthetic post by someone else.",
+      "author_id": "1009",
+      "created_at": "2026-01-04T15:04:05.000Z",
+      "referenced_tweets": [
+        {
+          "type": "retweeted",
+          "id": "9001"
+        }
+      ]
+    },
+    {
+      "id": "2003",
+      "text": "Synthetic quote of another post.",
+      "author_id": "1000",
+      "created_at": "2026-01-05T15:04:05.000Z",
+      "referenced_tweets": [
+        {
+          "type": "quoted",
+          "id": "9002"
+        }
+      ]
+    }
+  ],
+  "includes": {
+    "users": [
+      {
+        "id": "1000",
+        "name": "Sample Owner",
+        "username": "sample_owner",
+        "description": "Synthetic account used in tests.",
+        "verified": false,
+        "public_metrics": {
+          "followers_count": 4,
+          "following_count": 4,
+          "tweet_count": 3,
+          "listed_count": 0
+        }
+      },
+      {
+        "id": "1009",
+        "name": "Sample Other",
+        "username": "sample_other",
+        "description": "Synthetic account used in tests.",
+        "verified": false
+      }
+    ],
+    "tweets": [
+      {
+        "id": "9001",
+        "text": "Synthetic post by someone else.",
+        "author_id": "1009"
+      }
+    ]
+  },
+  "meta": {
+    "result_count": 3,
+    "newest_id": "2003",
+    "oldest_id": "2001",
+    "next_token": "synthetic-next"
+  }
+}

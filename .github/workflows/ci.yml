@@ -41,6 +41,36 @@ jobs:
             --file tests/fixtures/followers_day2.json \
             --list followers \
             --date 2026-01-02
+          python tools/ingest_posts.py \
+            --db "$RUNNER_TEMP/xtend.db" \
+            --file tests/fixtures/posts_page.json \
+            --kind posts \
+            --owner 1000 \
+            --date 2026-01-03
+          python tools/ingest_posts.py \
+            --db "$RUNNER_TEMP/xtend.db" \
+            --file tests/fixtures/likes_page.json \
+            --kind like \
+            --post 2001 \
+            --date 2026-01-03
+          python tools/ingest_posts.py \
+            --db "$RUNNER_TEMP/xtend.db" \
+            --file tests/fixtures/reposts_page.json \
+            --kind repost \
+            --post 2001 \
+            --date 2026-01-03
+          python tools/ingest_posts.py \
+            --db "$RUNNER_TEMP/xtend.db" \
+            --file tests/fixtures/quotes_page.json \
+            --kind quote \
+            --post 2001 \
+            --date 2026-01-03
+          python tools/ingest_posts.py \
+            --db "$RUNNER_TEMP/xtend.db" \
+            --file tests/fixtures/replies_page.json \
+            --kind reply \
+            --post 2001 \
+            --date 2026-01-03
           python tools/db_lint.py --db "$RUNNER_TEMP/xtend.db"
 
   gitleaks:

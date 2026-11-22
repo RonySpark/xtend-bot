@@ -64,7 +64,7 @@ def test_ingest_creates_rows_and_reingest_is_idempotent(tmp_path):
     }
 
     conn = sqlite3.connect(db)
-    assert table_names(conn) == ["accounts", "snapshots"]
+    assert table_names(conn) == ["accounts", "engagements", "posts", "snapshots"]
     assert columns(conn, "accounts") == [
         "id",
         "handle",
