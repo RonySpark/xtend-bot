@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "id": "1001",
+      "name": "Sample User One",
+      "username": "sample_user_1",
+      "description": "Synthetic account used in tests.",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 11,
+        "following_count": 4,
+        "tweet_count": 3,
+        "listed_count": 0
+      }
+    },
+    {
+      "id": "1003",
+      "name": "Sample User Three",
+      "username": "sample_user_3",
+      "description": "Synthetic account used in tests.",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 3,
+        "following_count": 3,
+        "tweet_count": 1,
+        "listed_count": 0
+      }
+    }
+  ],
+  "meta": {
+    "result_count": 2
+  }
+}
