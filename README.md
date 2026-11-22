@@ -6,7 +6,7 @@ This repo is a tool chest. Each tool does one job from the command line and uses
 
 ## Store
 
-`schema.sql` holds the tables. This version has `accounts` and `snapshots`. The ingest tool creates the database file and applies that schema.
+`schema.sql` holds the tables. This version has `accounts`, `snapshots`, `posts`, and `engagements`. The ingest tools create the database file and apply that schema.
 
 ## Run the tests
 
@@ -30,6 +30,26 @@ Use `--list following` for a following response. The command prints one JSON sum
 An account that was in an earlier full list and is missing from a later one is stored with that relationship turned off.
 
 `skills/ingest-followers/SKILL.md` says when a bot should run the tool and what the JSON means.
+
+## Load posts and engagements
+
+Save a raw X API v2 user posts page, then run:
+
+```bash
+python tools/ingest_posts.py --db xtend.db --file tests/fixtures/posts_page.json --kind posts --owner 1000 --date 2026-01-03
+```
+
+Save a likes, reposts, quotes, or replies page for one post, then run:
+
+```bash
+python tools/ingest_posts.py --db xtend.db --file tests/fixtures/likes_page.json --kind like --post 2001 --date 2026-01-03
+```
+
+`--kind` is `like`, `repost`, `quote`, or `reply`. The command prints one JSON summary. It does not change the JSON file. Running it again on the same file keeps the same row counts. A page does not remove rows that are absent from that file.
+
+A plain repost in the owner's posts page is stored with `is_repost` set to 1. It is not an original post for scoring. An engagement page whose post is not already in the store is refused, and no engagement row is written.
+
+`skills/ingest-posts/SKILL.md` says when a bot should run the tool and what the JSON means.
 
 ## Check the database
 

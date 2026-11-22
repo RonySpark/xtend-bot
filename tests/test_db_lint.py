@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from test_ingest_followers import DAY1, DAY2, run_ingest
+from test_ingest_posts import load_posts_and_engagements
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOL = ROOT / "tools" / "db_lint.py"
@@ -147,6 +148,21 @@ def test_null_required_timestamp_fails(tmp_path):
             i_follow INTEGER NOT NULL,
             UNIQUE (date, account_id)
         );
+        CREATE TABLE posts (
+            id INTEGER PRIMARY KEY,
+            x_post_id TEXT NOT NULL UNIQUE,
+            account_id INTEGER NOT NULL REFERENCES accounts (id),
+            text TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            is_repost INTEGER NOT NULL DEFAULT 0 CHECK (is_repost IN (0, 1))
+        );
+        CREATE TABLE engagements (
+            id INTEGER PRIMARY KEY,
+            post_id INTEGER NOT NULL REFERENCES posts (id),
+            account_id INTEGER NOT NULL REFERENCES accounts (id),
+            kind TEXT NOT NULL CHECK (kind IN ('like', 'repost', 'quote', 'reply')),
+            UNIQUE (post_id, account_id, kind)
+        );
         INSERT INTO accounts (
             handle, x_user_id, follows_me, i_follow, verified,
             first_seen, last_seen
@@ -189,6 +205,21 @@ def test_missing_column_fails(tmp_path):
             i_follow INTEGER NOT NULL,
             UNIQUE (date, account_id)
         );
+        CREATE TABLE posts (
+            id INTEGER PRIMARY KEY,
+            x_post_id TEXT NOT NULL UNIQUE,
+            account_id INTEGER NOT NULL REFERENCES accounts (id),
+            text TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            is_repost INTEGER NOT NULL DEFAULT 0 CHECK (is_repost IN (0, 1))
+        );
+        CREATE TABLE engagements (
+            id INTEGER PRIMARY KEY,
+            post_id INTEGER NOT NULL REFERENCES posts (id),
+            account_id INTEGER NOT NULL REFERENCES accounts (id),
+            kind TEXT NOT NULL CHECK (kind IN ('like', 'repost', 'quote', 'reply')),
+            UNIQUE (post_id, account_id, kind)
+        );
         """
     )
     conn.commit()
@@ -209,6 +240,8 @@ def test_empty_database_reports_missing_tables(tmp_path):
     assert completed.stdout.splitlines() == [
         "missing table: accounts",
         "missing table: snapshots",
+        "missing table: posts",
+        "missing table: engagements",
     ]
 
 
@@ -251,6 +284,7 @@ def test_ingested_fixtures_are_clean(tmp_path):
     db = tmp_path / "xtend.db"
     run_ingest(db, DAY1, "followers", "2026-01-01")
     run_ingest(db, DAY2, "followers", "2026-01-02")
+    load_posts_and_engagements(db)
     before = db.read_bytes()
     completed = run_lint(db)
     assert completed.returncode == 0, completed.stdout

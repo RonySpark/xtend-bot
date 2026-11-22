@@ -1,0 +1,20 @@
+{
+  "data": [
+    {
+      "id": "1001",
+      "name": "Sample User One",
+      "username": "sample_user_1",
+      "description": "Synthetic account used in tests.",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 10,
+        "following_count": 4,
+        "tweet_count": 2,
+        "listed_count": 0
+      }
+    }
+  ],
+  "meta": {
+    "result_count": 1
+  }
+}

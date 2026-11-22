@@ -1,0 +1,36 @@
+{
+  "data": [
+    {
+      "id": "3001",
+      "text": "Synthetic quote from another account.",
+      "author_id": "1003",
+      "created_at": "2026-01-06T15:04:05.000Z",
+      "referenced_tweets": [
+        {
+          "type": "quoted",
+          "id": "2001"
+        }
+      ]
+    }
+  ],
+  "includes": {
+    "users": [
+      {
+        "id": "1003",
+        "name": "Sample User Three",
+        "username": "sample_user_3",
+        "description": "Synthetic account used in tests.",
+        "verified": false,
+        "public_metrics": {
+          "followers_count": 3,
+          "following_count": 3,
+          "tweet_count": 1,
+          "listed_count": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "result_count": 1
+  }
+}
