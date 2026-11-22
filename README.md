@@ -53,6 +53,16 @@ A plain repost in the owner's posts page is stored with `is_repost` set to 1. It
 
 `skills/ingest-posts/SKILL.md` says when a bot should run the tool and what the JSON means.
 
+## Score neighbours
+
+```bash
+python tools/score_neighbours.py --db xtend.db --since 2026-01-01T00:00:00Z --until 2026-01-08T00:00:00Z
+```
+
+The command reads the database and does not change it. It prints one JSON object ranking the accounts that engaged with the owner's original posts in that window. A plain repost adds nothing. At most 3 distinct replies from one account on one post count. Default weights are like 1, repost 1, quote 3, and reply 3.
+
+`skills/score-neighbours/SKILL.md` says when a bot should run the tool.
+
 ## Check the database
 
 ```bash
