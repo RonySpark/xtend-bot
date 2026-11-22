@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "id": "1002",
+      "name": "Sample User Two",
+      "username": "sample_user_2",
+      "description": "Synthetic account used in tests."
+    },
+    {
+      "id": "1006",
+      "name": "Sample User Six",
+      "username": "sample_user_6",
+      "description": "Synthetic account used in tests."
+    }
+  ],
+  "meta": {
+    "result_count": 2
+  }
+}

@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from test_ingest_followers import DAY1, run_ingest
+
 ROOT = Path(__file__).resolve().parents[1]
 TOOL = ROOT / "tools" / "ingest_posts.py"
 LINT = ROOT / "tools" / "db_lint.py"
@@ -13,6 +15,8 @@ LIKES = FIXTURES / "likes_page.json"
 REPOSTS = FIXTURES / "reposts_page.json"
 QUOTES = FIXTURES / "quotes_page.json"
 REPLIES = FIXTURES / "replies_page.json"
+LIKES_NO_VERIFIED = FIXTURES / "likes_no_verified.json"
+LIKES_VERIFIED_FALSE = FIXTURES / "likes_verified_false.json"
 DATE = "2026-01-03"
 ENGAGEMENT_FILES = (
     ("like", LIKES),
@@ -215,4 +219,28 @@ def test_plain_repost_is_flagged_on_the_owner(tmp_path):
     assert conn.execute(
         "SELECT follows_me, i_follow FROM accounts WHERE x_user_id = '1000'"
     ).fetchone() == (0, 0)
+    conn.close()
+
+
+def verified_of(conn, x_user_id):
+    return conn.execute(
+        "SELECT verified FROM accounts WHERE x_user_id = ?",
+        (x_user_id,),
+    ).fetchone()[0]
+
+
+def test_missing_verified_keeps_existing_flag(tmp_path):
+    db = tmp_path / "xtend.db"
+    run_ingest(db, DAY1, "followers", "2026-01-01")
+    run_posts(db, POSTS, "posts", owner="1000")
+    run_posts(db, LIKES_NO_VERIFIED, "like", post="2001")
+
+    conn = sqlite3.connect(db)
+    assert verified_of(conn, "1002") == 1
+    assert verified_of(conn, "1006") == 0
+    conn.close()
+
+    run_posts(db, LIKES_VERIFIED_FALSE, "like", post="2001")
+    conn = sqlite3.connect(db)
+    assert verified_of(conn, "1002") == 0
     conn.close()

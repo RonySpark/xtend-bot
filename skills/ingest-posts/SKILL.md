@@ -15,4 +15,4 @@ An engagement whose post is not already in the store is refused. The command exi
 
 Output is one JSON object. For posts: `snapshot_date`, `kind`, `upserted`, `reposts`, `posts`, and `accounts`. For an engagement: `snapshot_date`, `kind`, `x_post_id`, `upserted`, `engagements`, and `accounts`. `posts`, `engagements`, and `accounts` are table row counts. `reposts` counts plain reposts in this file. Exit code 0 means success.
 
-The same file does not add rows. A page does not delete posts or engagements that are absent from the file. Accounts already in the store keep `follows_me` and `i_follow`.
+The same file does not add rows. A page does not delete posts or engagements that are absent from the file. Accounts already in the store keep `follows_me` and `i_follow`. A page that omits `verified` leaves an existing account's `verified` unchanged. A new account from that page is stored with `verified` 0. A page that sets `verified` to true or false updates the stored value. A missing username is refused, so `handle` is always taken from the page.

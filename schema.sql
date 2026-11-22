@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     x_user_id TEXT NOT NULL UNIQUE,
     follows_me INTEGER NOT NULL DEFAULT 0 CHECK (follows_me IN (0, 1)),
     i_follow INTEGER NOT NULL DEFAULT 0 CHECK (i_follow IN (0, 1)),
-    verified INTEGER NOT NULL DEFAULT 0 CHECK (verified IN (0, 1)),
+    verified INTEGER DEFAULT 0 CHECK (verified IN (0, 1)),
     followers_count INTEGER,
     following_count INTEGER,
     last_post_at TEXT,

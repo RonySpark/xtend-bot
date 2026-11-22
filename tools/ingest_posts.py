@@ -34,10 +34,14 @@ def parse_user(item, where):
     last_post_at = item.get("last_post_at")
     if last_post_at is not None and not isinstance(last_post_at, str):
         raise ValueError(f"{where}.last_post_at must be a string")
+    if "verified" not in item or item["verified"] is None:
+        verified = None
+    else:
+        verified = 1 if item["verified"] is True else 0
     return {
         "x_user_id": str(user_id),
         "handle": username,
-        "verified": 1 if item.get("verified") is True else 0,
+        "verified": verified,
         "followers_count": as_count(
             metrics.get("followers_count"), f"{where}.followers_count"
         ),
@@ -220,6 +224,14 @@ def connect(db_path):
 
 
 def upsert_account(conn, user, snapshot_date):
+    verified = user["verified"]
+    if verified is None:
+        existing = conn.execute(
+            "SELECT 1 FROM accounts WHERE x_user_id = ?",
+            (user["x_user_id"],),
+        ).fetchone()
+        if existing is None:
+            verified = 0
     conn.execute(
         """
         INSERT INTO accounts (
@@ -229,7 +241,7 @@ def upsert_account(conn, user, snapshot_date):
         ) VALUES (?, ?, 0, 0, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (x_user_id) DO UPDATE SET
             handle = excluded.handle,
-            verified = excluded.verified,
+            verified = COALESCE(excluded.verified, accounts.verified),
             followers_count = COALESCE(excluded.followers_count, accounts.followers_count),
             following_count = COALESCE(excluded.following_count, accounts.following_count),
             last_post_at = COALESCE(excluded.last_post_at, accounts.last_post_at),
@@ -238,7 +250,7 @@ def upsert_account(conn, user, snapshot_date):
         (
             user["handle"],
             user["x_user_id"],
-            user["verified"],
+            verified,
             user["followers_count"],
             user["following_count"],
             user["last_post_at"],
